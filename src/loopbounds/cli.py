@@ -43,6 +43,8 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--openai", metavar="MODEL", default=None,
                            help="use an OpenAI model (OPENAI_API_KEY in .env), write to data/openai/<model>/")
             p.add_argument("--budget", type=float, default=None, help="study-wide spend cap in USD")
+            p.add_argument("--difficulty", choices=["L0", "L1", "L2", "L3"], default=None,
+                           help="task difficulty for every experiment (separate study folder)")
         p.add_argument("-v", "--verbose", action="store_true")
         return p
 
@@ -81,17 +83,20 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--openai", nargs="*", default=[], metavar="MODEL", help="also run these OpenAI models")
     p.add_argument("--budget", type=float, default=4.0, help="spend cap per OpenAI model study (USD)")
     p.add_argument("--openai-scale", type=float, default=None, help="run scale for OpenAI studies")
+    p.add_argument("--difficulty", choices=["L0", "L1", "L2", "L3"], default=None,
+                   help="task difficulty for every experiment (pick it with pilot-report)")
     add("compare-models", "cross-model table + figure from data/ollama/*/processed", mock=False)
+    add("pilot-report", "per-difficulty success and per-step p from E0b pilot logs")
 
     load_dotenv()
     a = ap.parse_args(argv)
     if a.cmd == "local-pipeline":
         for m in a.models:
             pl.local_pipeline(m, scale=a.scale, num_ctx=a.num_ctx, external_tasks=not a.no_external,
-                              verbose=a.verbose)
+                              difficulty=a.difficulty, verbose=a.verbose)
         for m in a.openai:
             pl.local_pipeline(m, provider="openai", scale=a.openai_scale or a.scale, budget_usd=a.budget,
-                              external_tasks=not a.no_external, verbose=a.verbose)
+                              external_tasks=not a.no_external, difficulty=a.difficulty, verbose=a.verbose)
         from loopbounds.analysis.compare import compare_models
         compare_models()
         return 0
@@ -101,7 +106,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     paths = pl.Paths.make(mock=getattr(a, "mock", False), ollama=getattr(a, "ollama", None),
                           num_ctx=getattr(a, "num_ctx", 32768), openai=getattr(a, "openai", None),
-                          budget_usd=getattr(a, "budget", None))
+                          budget_usd=getattr(a, "budget", None), difficulty=getattr(a, "difficulty", None))
     if a.cmd == "run":
         pl.run(a.experiments, paths, scale=a.scale, verbose=a.verbose)
     elif a.cmd == "estimate":
@@ -111,6 +116,8 @@ def main(argv: list[str] | None = None) -> int:
         res = pl.validate(runs=a.runs)
         print(json.dumps(res, indent=2, default=float))
         return 0 if res["all_recovered"] else 1
+    elif a.cmd == "pilot-report":
+        print(pl.pilot_report(paths).round(3).to_string(index=False))
     elif a.cmd == "calibrate":
         pl.calibrate(paths, scale=a.scale, verbose=a.verbose, run_experiments=not a.fit_only)
     elif a.cmd == "prereg-check":

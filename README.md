@@ -107,23 +107,40 @@ If it still says CPU, look for CUDA errors near "discovering available GPUs" in
 Models larger than VRAM (e.g. `qwen2.5:32b`, 19 GB) spill onto the CPU and run
 far slower, so stick to ~7–8B models on a 12 GB card.
 
-**2. Run all three models end to end** (calibrate → predict → prediction runs → E10 coding tasks → analyze → figures), then compare them:
+**2. Pick the task difficulty (pilot).** The default difficulty (L1, with fake
+clues tagged with other keys) is too hard for 7–8B models. A first llama3.1:8b
+check reached the answer in only 2 of 18 runs, because it followed fake `[K5]`
+clues into decoy chains. The E0b pilot measures per-step reliability p̂ at
+every level; choose the hardest level whose p̂ sits in the target band
+0.85–0.97 for all models, so per-step errors are rare but measurable:
 
 ```bash
-uv run loopbounds local-pipeline --models llama3.1:8b qwen2.5:7b mistral:7b --scale 0.2
+uv run loopbounds run E0b_pilot --ollama llama3.1:8b --scale 0.25 -v
+uv run loopbounds run E0b_pilot --ollama qwen2.5:7b  --scale 0.25 -v
+uv run loopbounds run E0b_pilot --ollama mistral:7b  --scale 0.25 -v
+uv run loopbounds pilot-report --ollama llama3.1:8b     # repeat for each model
 ```
+
+**3. Run all three models end to end** at the chosen level (calibrate → predict → prediction runs → E10 coding tasks → analyze → figures), then compare them:
+
+```bash
+uv run loopbounds local-pipeline --models llama3.1:8b qwen2.5:7b mistral:7b --difficulty L0 --scale 0.2
+```
+
+With `--difficulty`, each study goes to `data/ollama/<model>-<level>/`, so
+runs at different difficulty levels never mix.
 
 - `--scale 0.2` runs 20% of each experiment's planned runs (at least 3 per cell). Raise it for tighter error bars; on CPU, lower it.
 - `--num-ctx 32768` sets Ollama's context window (the default). Runs stop at 85% of it, because Ollama silently truncates longer prompts. Chains that outgrow it end as `context_overflow`, which is the context wall.
 - `--no-external` skips the E10 coding tasks.
 - Runs are resumable: re-running the command skips runs whose logs already exist.
 
-**3. Outputs**
+**4. Outputs**
 
 | Path | Content |
 |---|---|
-| `data/ollama/<model>/processed/` | fitted parameters, predictions, agreement summary, parquet exports |
-| `data/ollama/<model>/figures/`, `tables/` | Fig 1–7 and Tab 1–4 for that model |
+| `data/ollama/<model>[-<level>]/processed/` | fitted parameters, predictions, agreement summary, parquet exports |
+| `data/ollama/<model>[-<level>]/figures/`, `tables/` | Fig 1–7 and Tab 1–4 for that model |
 | `data/models/comparison.csv` | fitted p, r, e, λ, speed and check results per model |
 | `data/models/models_success_vs_n.png` | observed success vs n with each model's L1 prediction |
 

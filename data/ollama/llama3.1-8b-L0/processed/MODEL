@@ -1,0 +1,1 @@
+ollama/llama3.1:8b num_ctx=32768 difficulty=L0
