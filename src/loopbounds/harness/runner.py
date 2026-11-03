@@ -74,6 +74,10 @@ def expand_cells(cfg: dict) -> list[dict]:
     base.update({"arm": cfg.get("arm", "naive"), "mode": cfg.get("mode", "agent"),
                  "summ_every": cfg.get("summ_every", 5), "window_cap": cfg.get("window_cap"),
                  "max_steps_factor": cfg.get("max_steps_factor", 3)})
+    if cfg.get("cells_file") and not cfg.get("cells"):
+        cf = Path(cfg["cells_file"])
+        cf = cf if cf.is_absolute() else CONFIG_DIR / "experiments" / cf
+        cfg = {**cfg, "cells": yaml.safe_load(cf.read_text())["cells"]}
     if cfg.get("cells"):
         cells = [{**base, **c} for c in cfg["cells"]]
     else:
@@ -151,6 +155,8 @@ def run_experiment(cfg_or_path, *, out_root: str | Path = RAW_DIR, resume: bool 
     aborted = False
     max_tokens = int(cfg.get("max_tokens", 1024))
 
+    base_keys = set(TASK_KEYS) | {"f", "d", "R", "arm", "mode", "summ_every", "window_cap", "max_steps_factor",
+                                  "cell_id"}
     try:
         for cell in cells:
             for rep in range(reps):
@@ -169,6 +175,7 @@ def run_experiment(cfg_or_path, *, out_root: str | Path = RAW_DIR, resume: bool 
                     d=float(cell["d"]) if cell["f"] else None, R=int(cell["R"]),
                     summ_every=int(cell["summ_every"]) if cell["arm"] == "summarized" else None,
                     client_kind=getattr(llm, "kind", ""), harness_git_sha=git_sha(), started_at=now_iso(),
+                    extra={k: cell[k] for k in cell if k not in base_keys},
                 )
                 if cell["mode"] == "single_shot":
                     window = int(cell["window_cap"] or load_params(model=None).window)
@@ -182,7 +189,8 @@ def run_experiment(cfg_or_path, *, out_root: str | Path = RAW_DIR, resume: bool 
                                             "output": ss.usage.output, "context_estimate": ss.context_estimate},
                                     cost_usd=usage_dollars(pp, ss.usage), wall_s=ss.total_s,
                                     rate_limit_wait_s=ss.rate_limit_wait_s, model_id=ss.model_id,
-                                    max_steps=1, extra={"ttft_s": ss.ttft_s, "answer": ss.answer})
+                                    max_steps=1)
+                    run.extra.update({"ttft_s": ss.ttft_s, "answer": ss.answer})
                     logger.write([], run)
                 else:
                     inj = Injector(cell["f"], cell["d"], cell["R"], seed=int(_h([run_id, "inj"], 8), 16))

@@ -100,27 +100,31 @@ def filler_exact(rng: np.random.Generator, n_chars: int, line_len: int = 80) -> 
     """Filler prose of exactly ``n_chars`` characters, broken into ~line_len lines."""
     if n_chars <= 0:
         return ""
-    words: list[str] = []
-    total = 0
-    while total < n_chars + 20:
-        k = int(rng.integers(6, 14))
-        sent = list(rng.choice(_WORDS, size=k))
-        sent[0] = sent[0].capitalize()
-        s = " ".join(sent) + "."
-        words.append(s)
-        total += len(s) + 1
-    text = " ".join(words)[:n_chars]
+    n_words = n_chars // 4 + 40                      # words average > 4 chars incl. separator
+    idx = rng.integers(0, len(_WORDS), size=n_words)
+    sent_len = rng.integers(6, 14, size=n_words // 6 + 2)
+    words = [_WORDS[i] for i in idx]
+    out, pos = [], 0
+    for L in sent_len:
+        chunk = words[pos:pos + L]
+        if not chunk:
+            break
+        pos += L
+        out.append(chunk[0].capitalize() + (" " + " ".join(chunk[1:]) if len(chunk) > 1 else "") + ".")
+    text = " ".join(out)
+    while len(text) < n_chars:                       # extremely rare top-up
+        text += " " + text[: n_chars - len(text)]
+    text = text[:n_chars]
     if text.endswith(" "):
         text = text[:-1] + "."
     chars = list(text)
-    pos = line_len
-    while pos < len(chars):
-        j = pos
-        while j < len(chars) and chars[j] != " ":
-            j += 1
-        if j < len(chars):
-            chars[j] = "\n"
-        pos = j + line_len
+    p = line_len
+    while p < len(chars):
+        q = text.find(" ", p)
+        if q < 0:
+            break
+        chars[q] = "\n"
+        p = q + line_len
     return "".join(chars)
 
 

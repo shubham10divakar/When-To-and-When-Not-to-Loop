@@ -1,0 +1,13 @@
+# Pass criteria for the agreement tests (design doc §7.3).
+# PROPOSED values — finalize, commit and tag `prereg-v1` BEFORE the prediction phase.
+l1_l2:
+  cost_rel_err: 0.01          # mean cost relative error at 1e5 simulated runs
+  success_se_mult: 3.0        # |L1 - L2| < k * SE
+  retry_se_mult: 3.0
+l3:
+  cost_median_rel_err: 0.10   # median over prediction cells of |obs - pred| / pred
+  success_ci_coverage: 0.80   # fraction of cells whose prediction lies in the observed Wilson 95% CI
+  markov_beats_naive: true    # Markov Brier score < naive p^n Brier score on E4
+  retry_ceiling_in_ci: true   # observed clean-delivery plateau within CI of (1-f)/(1-fd)
+  feasibility_accuracy: 0.80  # E9 overall classification accuracy
+  # latency: report R^2 and residuals only (no hard threshold)
