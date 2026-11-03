@@ -25,6 +25,117 @@ assumptions. Parameters are fitted on short chains (n ∈ {5, 10}) and predictio
 for longer chains and boundary points are **pre-registered** before any
 prediction-phase data exists (`preregistration/`).
 
+## Why we are doing this (plain-language overview)
+
+### The question
+
+An agent is an LLM called in a loop: think, use a tool, read the result,
+repeat. More and more systems are built this way. The paper asks: **when is
+looping actually worth it, and when should you make one big call instead?**
+
+The claim is that loops hit three walls that get worse as the number of steps *n* grows:
+
+1. **Cost/context wall.** Every step re-sends the whole conversation so far:
+   step 1 sends a little, step 40 sends everything from steps 1–39. Total
+   tokens grow roughly like n², not n. Prompt caching makes each token cheaper
+   but the growth is still n²; summarizing the history makes it linear.
+2. **Reliability wall.** Every step can go wrong. At 95% per step, 40 steps in
+   a row succeed only 0.95⁴⁰ ≈ 13% of the time. Agents can also recover from
+   mistakes, so the real curve is better than that simple formula, and
+   measuring how much better is part of the paper.
+3. **Latency wall.** Steps happen one after another, so time adds up.
+
+The walls interact: **reliability falls as the context gets longer**, because
+models get worse with more text in front of them. Together they mark out a
+**feasible region**, the task shapes where an agent fits your budget, deadline
+and required success rate. Outside it, a single call or a different design wins.
+
+### How we test it: three layers
+
+| Layer | What it is | Its job |
+|---|---|---|
+| **L1** math model | formulas: cost per step, chance of going off track / recovering, time per step | makes the predictions |
+| **L2** simulation | simulates thousands of agent runs from the same numbers | checks the math; adds queues and rate limits |
+| **L3** real runs | a real agent (Claude, OpenAI, or local Ollama models) solving tasks | the ground truth |
+
+If L1 and L2 agree, the math is right. If L1 and L3 agree, the
+**assumptions** about real models are right. If they disagree, that is a
+finding, not a bug: we report which assumption broke.
+
+### The task the agent solves (pointer-chase)
+
+We need a task with a known right answer, a known number of steps, and a
+difficulty we can turn up and down:
+
+- A folder of files. The agent is told to start at file A.
+- File A contains a clue such as `[K7] NEXT FILE: xq3kfa`, that file holds the
+  next clue, and so on for *n* files. The last file holds `[K7] ANSWER: 7GH2KQ9P`.
+- Each file is padded with filler text. That sets how much context each step
+  adds (δ in the formulas).
+- **Decoy chains** lead to fake answers.
+- **Fake clues** with other tags (e.g. `[K5]`) must be ignored. Difficulty L1
+  adds these; L2/L3 add reversed names and split clues.
+
+Because we know the true chain, every step can be labelled: correct move,
+wrong move, re-read, or recovery. From the labels we measure **p** (a step is
+correct), **r** (getting back on track after a mistake) and **e** (giving up
+with a wrong answer).
+
+### The method: calibrate, then predict
+
+1. **Calibrate** on short chains (5 and 10 steps): measure p, r, e, tokens per
+   step, speed, and how much reliability drops with context length.
+2. **Predict**, in advance and in writing, what happens on long chains (20 and
+   40 steps) and on borderline configurations. The code refuses to make
+   predictions once that data exists.
+3. **Run** the long chains and compare success, cost and time with the predictions.
+
+This makes it science rather than curve-fitting: the model has to predict
+data it has not seen.
+
+### What each experiment is for
+
+| Experiment | Question |
+|---|---|
+| E0 | Does the whole pipeline work? (mock models with known answers) |
+| E0b pilot | Which difficulty gives a measurable error rate for this model? |
+| E1 | Does cost really grow like n²? How much does caching help? |
+| E2 | Where does the context window run out? |
+| E3 | Measure p, r, e on short chains |
+| **E4** | **Predict success on long chains.** Does the recovery model beat the simple pⁿ? |
+| E5 | Does reliability fall as context grows, and by how much? |
+| E6 | Does summarizing the history keep costs linear without hurting accuracy? |
+| E7 | Retries fix errors the tool can detect, but not silent wrong data. Does success level off where the math says? |
+| E8 | The baseline: one big call with all files pasted in |
+| **E9** | **Headline:** for borderline configurations, do we correctly predict which side of the feasible region they fall on? |
+| E10 | Does any of it hold on a realistic task (small coding problems)? |
+
+### Why the open-source models matter
+
+The claim is general, so it should hold across models, not only Claude.
+Running llama3.1, qwen2.5 and mistral tests that:
+
+- Each model gets its own fitted p, r, e. A weaker model has a smaller p and a
+  smaller feasible region.
+- The question per model is the same: once calibrated on short chains, does
+  the model predict that model's long-chain behaviour?
+- For local models money cost is $0, so the cost wall shows up as time: long
+  contexts make every step slower, and the context wall is very real at 32K tokens.
+
+A first llama3.1:8b check was already a small result. At difficulty L1 the 8B
+model ignored the "only follow [K7]" rule and followed fake `[K5]` clues into
+decoy chains. That is why the pilot picks a difficulty where per-step success
+is about 0.85–0.97: errors are rare enough for the model to work but frequent
+enough to measure.
+
+### What you get at the end
+
+- Per model: whether each pre-registered check passed, and the fitted parameters.
+- Across models: a table and a plot of how fast each model's success drops as
+  chains get longer, against what its own model predicted (`data/models/`).
+- For the paper: here is the feasible region and where each wall bites; our
+  predictions matched, or did not, and here is which assumption broke.
+
 ## Quickstart: offline, no API key
 
 ```bash
