@@ -79,6 +79,18 @@ checks, figures, tables). No API key is needed and the cost is $0. For local
 models the binding wall is latency, and the logged token counts still give the
 hosted-API cost of the same runs.
 
+**One command for everything** (steps 2 and 3 below, then a summary):
+
+```bash
+uv run loopbounds study --models llama3.1:8b qwen2.5:7b mistral:7b --scale 0.2 -v
+```
+
+It runs the E0b pilot on every model, picks one difficulty for all of them (the
+hardest level where every model's per-step p̂ lies in 0.85–0.97), runs the full
+study per model at that level, and prints a summary that is also saved to
+`data/models/study_summary.md`. Pass `--difficulty L0` to skip the pilot. The
+command is resumable, so re-running it skips finished runs.
+
 **1. Prerequisites**
 
 ```bash

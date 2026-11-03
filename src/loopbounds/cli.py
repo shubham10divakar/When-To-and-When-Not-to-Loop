@@ -87,9 +87,21 @@ def main(argv: list[str] | None = None) -> int:
                    help="task difficulty for every experiment (pick it with pilot-report)")
     add("compare-models", "cross-model table + figure from data/ollama/*/processed", mock=False)
     add("pilot-report", "per-difficulty success and per-step p from E0b pilot logs")
+    p = add("study", "ONE COMMAND: pilot -> pick difficulty -> full study per local model -> summary", mock=False)
+    p.add_argument("--models", nargs="+", default=["llama3.1:8b", "qwen2.5:7b", "mistral:7b"])
+    p.add_argument("--scale", type=float, default=0.2, help="run scale for the full study")
+    p.add_argument("--pilot-scale", type=float, default=0.25, help="run scale for the E0b pilot")
+    p.add_argument("--num-ctx", type=int, default=32768)
+    p.add_argument("--difficulty", choices=["L0", "L1", "L2", "L3"], default=None,
+                   help="skip the pilot and use this difficulty")
+    p.add_argument("--no-external", action="store_true", help="skip E10 coding tasks")
 
     load_dotenv()
     a = ap.parse_args(argv)
+    if a.cmd == "study":
+        pl.local_study(a.models, scale=a.scale, pilot_scale=a.pilot_scale, num_ctx=a.num_ctx,
+                       difficulty=a.difficulty, external_tasks=not a.no_external, verbose=a.verbose)
+        return 0
     if a.cmd == "local-pipeline":
         for m in a.models:
             pl.local_pipeline(m, scale=a.scale, num_ctx=a.num_ctx, external_tasks=not a.no_external,

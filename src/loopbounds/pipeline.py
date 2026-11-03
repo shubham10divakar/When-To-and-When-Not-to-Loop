@@ -368,5 +368,82 @@ def pilot_report(paths: Paths, experiment: str = "E0b_pilot"):
     return pd.DataFrame(rows)
 
 
-__all__ = ["pilot_report", "local_pipeline", "model_slug","Paths", "CALIBRATION", "PREDICTION", "EXTERNAL", "validate", "calibrate", "predict_stage",
+LEVELS = ("L0", "L1", "L2", "L3")
+P_BAND = (0.85, 0.97)
+
+
+def choose_difficulty(reports: dict) -> tuple[str, str]:
+    """Pick one difficulty for all models from their pilot reports (naive arm p̂).
+
+    1. the hardest level where every model's p̂ is inside the target band;
+    2. else the hardest level where every model's p̂ >= the band's lower edge;
+    3. else the level with the highest worst-model p̂.
+    """
+    p = {}
+    for model, rep in reports.items():
+        nv = rep[rep["arm"] == "naive"]
+        for _, row in nv.iterrows():
+            p.setdefault(row["difficulty"], {})[model] = row["p_hat"]
+    levels = [lv for lv in LEVELS if lv in p and len(p[lv]) == len(reports)]
+    if not levels:
+        return "L0", "no complete pilot data; defaulting to L0"
+    lo, hi = P_BAND
+    in_band = [lv for lv in levels if all(lo <= v <= hi for v in p[lv].values())]
+    if in_band:
+        return in_band[-1], f"hardest level with every model's p in [{lo}, {hi}]"
+    ok = [lv for lv in levels if all(v >= lo for v in p[lv].values())]
+    if ok:
+        return ok[-1], f"no level in band for all models; hardest with every p >= {lo}"
+    best = max(levels, key=lambda lv: min(p[lv].values()))
+    return best, f"no level reaches p >= {lo} for all models; level with the best worst-model p"
+
+
+def local_study(models: list[str], *, scale: float = 0.2, pilot_scale: float = 0.25, num_ctx: int = 32768,
+                difficulty: str | None = None, external_tasks: bool = True, verbose: bool = False) -> dict:
+    """One command: pilot (E0b) on every model -> choose difficulty -> full study per model -> comparison."""
+    import pandas as pd
+
+    from loopbounds.analysis.compare import OUT as CMP_OUT, compare_models
+
+    reports = {}
+    if difficulty is None:
+        for m in models:
+            paths = Paths.make(ollama=m, num_ctx=num_ctx)
+            print(f"\n=== [1/3] pilot {m}")
+            run(["E0b_pilot"], paths, scale=pilot_scale, verbose=verbose)
+            reports[m] = pilot_report(paths)
+            print(reports[m].round(3).to_string(index=False))
+        difficulty, why = choose_difficulty(reports)
+    else:
+        why = "given with --difficulty"
+    print(f"\n=== [2/3] difficulty {difficulty} ({why})")
+
+    checks = {}
+    for m in models:
+        print(f"\n=== [3/3] full study {m} @ {difficulty}")
+        checks[m] = local_pipeline(m, scale=scale, num_ctx=num_ctx, external_tasks=external_tasks,
+                                   difficulty=difficulty, verbose=verbose)
+    table = compare_models()
+
+    lines = [f"# Local model study ({pd.Timestamp.now():%Y-%m-%d %H:%M})", "",
+             f"Models: {', '.join(models)}  |  difficulty {difficulty} ({why})  |  scale {scale}", ""]
+    for m, rep in reports.items():
+        lines += [f"## Pilot: {m}", "", "```", rep.round(3).to_string(index=False), "```", ""]
+    lines += ["## Agreement checks", ""]
+    for m, ch in checks.items():
+        summary = ", ".join(f"{k}={'PASS' if c.get('pass') else ('FAIL' if c.get('pass') is False else 'report')}"
+                            for k, c in ch.items())
+        lines.append(f"- **{m}**: {summary}")
+    cols = [c for c in ("model", "p", "r", "e", "lambda", "coupling", "decode_tok_s") if c in table]
+    lines += ["", "## Fitted parameters", "", "```", table[cols].round(4).to_string(index=False), "```", "",
+              f"Figure: {CMP_OUT / 'models_success_vs_n.png'}"]
+    report_path = CMP_OUT / "study_summary.md"
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print("\n" + "\n".join(lines))
+    print(f"\nsummary -> {report_path}")
+    return {"difficulty": difficulty, "checks": checks, "comparison": table}
+
+
+__all__ = ["local_study", "choose_difficulty", "pilot_report", "local_pipeline", "model_slug","Paths", "CALIBRATION", "PREDICTION", "EXTERNAL", "validate", "calibrate", "predict_stage",
            "prereg_check", "run_predict", "external", "analyze", "figures", "mock_pipeline", "run", "estimate"]
