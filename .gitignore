@@ -14,3 +14,4 @@ data/raw/
 data/mock/
 data/ollama/*/raw/
 data/openai/*/raw/
+papers/*.pdf

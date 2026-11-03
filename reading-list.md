@@ -10,8 +10,8 @@ Priority: **[MUST]** read before finalising the paper · **[CORE]** directly rel
 | # | Paper | Why it matters for us | Link |
 |---|---|---|---|
 | 1 | **[MUST]** T. Ord, *Is there a half-life for the success rates of AI agents?* (2025) | Argues agent success decays exponentially with task length (constant hazard) — essentially our naive pⁿ model. Our Markov-with-recovery model predicts a *non-constant* hazard. Must be cited and positioned against. | https://arxiv.org/pdf/2505.05115 |
-| 2 | **[MUST]** A. Sinha et al., *The Illusion of Diminishing Returns: Measuring Long Horizon Execution in LLMs* (2025) | Shows small per-step accuracy gains compound into large horizon gains, and reports *self-conditioning*: models get worse once their own errors are in context. Directly relevant to our reliability wall and coupling term. | https://arxiv.org/pdf/2509.09677 |
-| 3 | **[MUST]** T. Kwa, B. West et al. (METR), *Measuring AI Ability to Complete Long Tasks* (2025) | The "50% time horizon" metric. Their data could be a second test of our reliability model. | https://arxiv.org/pdf/2503.14499 |
+| 2 | **[MUST]** A. Sinha et al., *The Illusion of Diminishing Returns: Measuring Long Horizon Execution in LLMs* (ICLR 2026) | Shows small per-step accuracy gains compound into large horizon gains, and reports *self-conditioning*: models get worse once their own errors are in context. Directly relevant to our reliability wall and coupling term. | https://arxiv.org/pdf/2509.09677 |
+| 3 | **[MUST]** T. Kwa, B. West et al. (METR), *Measuring AI Ability to Complete Long Software Tasks* (2025) | The "50% time horizon" metric. Their data could be a second test of our reliability model. | https://arxiv.org/pdf/2503.14499 |
 | 4 | **[MUST]** J. Kim et al., *The Cost of Dynamic Reasoning: Demystifying AI Agents and Test-Time Scaling from an AI Infrastructure Perspective* (2025) | Systems view of agent cost, latency and energy — closest in spirit to our cost/latency walls. Check overlap carefully. | https://arxiv.org/pdf/2506.04301 |
 | 5 | **[MUST]** S. Kapoor et al., *AI Agents That Matter* (2024) | Cost-aware agent evaluation; simple baselines competitive once cost counts. Already cited. | https://arxiv.org/pdf/2407.01502 |
 | 6 | **[CORE]** Y. Kim et al., *Towards a Science of Scaling Agent Systems* (2025) | Quantitative study of when multi-agent setups help or hurt — the natural follow-up paper (multi-agent / USL). | https://arxiv.org/pdf/2512.08296 |
@@ -20,8 +20,8 @@ Priority: **[MUST]** read before finalising the paper · **[CORE]** directly rel
 
 | Paper | Focus | Link |
 |---|---|---|
-| L. Wang et al., *A Survey on Large Language Model based Autonomous Agents* | The standard agent survey (profile, memory, planning, action) | https://arxiv.org/pdf/2308.11432 |
-| *Toward Efficient Agents: Memory, Tool Learning, and Planning* (2026) | Efficiency of agents — closest survey to our topic | https://arxiv.org/pdf/2601.14192 |
+| L. Wang et al., *A Survey on Large Language Model based Autonomous Agents* (Front. Comput. Sci., 2025) | The standard agent survey (profile, memory, planning, action) | https://arxiv.org/pdf/2308.11432 |
+| X. Yang, L. Li, H. Zhou, T. Zhu et al., *Toward Efficient Agents: A Survey of Memory, Tool Use, and Planning* (2026) | Efficiency of agents — closest survey to our topic | https://arxiv.org/pdf/2601.14192 |
 | L. Mei et al., *A Survey of Context Engineering for Large Language Models* (2025) | Context management, compression, memory — our context wall and summarisation | https://arxiv.org/pdf/2507.13334 |
 | A. Yehudai et al., *Survey on Evaluation of LLM-based Agents* (2025) | Agent benchmarks and evaluation | https://arxiv.org/pdf/2503.16416 |
 | M. Mohammadi et al., *Evaluation and Benchmarking of LLM Agents: A Survey* (2025) | Evaluation taxonomy, incl. reliability and cost | https://arxiv.org/pdf/2507.21504 |
@@ -51,7 +51,7 @@ Priority: **[MUST]** read before finalising the paper · **[CORE]** directly rel
 | Paper | Link |
 |---|---|
 | L. Chen et al., *FrugalGPT* (2023) | https://arxiv.org/pdf/2305.05176 |
-| I. Ong et al., *RouteLLM* (2024) | https://arxiv.org/pdf/2406.18665 |
+| I. Ong et al., *RouteLLM* (ICLR 2025) | https://arxiv.org/pdf/2406.18665 |
 | I. Gim et al., *Prompt Cache* (MLSys 2024) | https://arxiv.org/pdf/2311.04934 |
 | W. Kwon et al., *vLLM / PagedAttention* (SOSP 2023) | https://arxiv.org/pdf/2309.06180 |
 
@@ -64,7 +64,7 @@ Different meaning of "loop" (looping layers inside the model, not calling the mo
 | M. Dehghani et al., *Universal Transformers* (ICLR 2019) — adaptive halting | https://arxiv.org/pdf/1807.03819 |
 | A. Giannou et al., *Looped Transformers as Programmable Computers* (ICML 2023) | https://arxiv.org/pdf/2301.13196 |
 | J. Geiping et al., *Scaling up Test-Time Compute with Latent Reasoning: A Recurrent Depth Approach* (2025) | https://arxiv.org/pdf/2502.05171 |
-| *Two-Scale Latent Dynamics for Recurrent-Depth Transformers* (2025) | https://arxiv.org/pdf/2509.23314 |
+| F. Pappone, D. Crisostomi, E. Rodolà, *Two-Scale Latent Dynamics for Recurrent-Depth Transformers* (2025) | https://arxiv.org/pdf/2509.23314 |
 
 ## 7. Capacity-planning background (books — not freely downloadable)
 
@@ -114,4 +114,8 @@ twoscale2025_recurrentdepth https://arxiv.org/pdf/2509.23314
 EOF
 ```
 
-Note: author lists for a few 2025–2026 entries were written from memory; confirm them from the PDF before citing.
+Note: all 28 arXiv PDFs were downloaded and checked against their first pages
+(2026-11-03). Titles, authors and venues above were corrected from those pages
+(METR title, Efficient-Agents survey title/authors, Two-Scale authors, venues for
+Sinha, Wang and RouteLLM). PDFs are kept locally in `papers/` and are not
+committed (arXiv licences generally do not permit redistribution).
