@@ -1,0 +1,12 @@
+# E1 — Calibration: cost scaling, naive vs cached.
+name: E1_cost
+phase: calibration
+client: {kind: anthropic, model: claude-haiku-5-5, effort: low, thinking: adaptive}
+task: {difficulty: L1, n_decoy_chains: 2, n_fake_clues: 2}   # difficulty: set from E0b
+grid:
+  depth: [5, 10, 20, 40]
+  file_tokens: [200, 1000, 3000]
+  arm: [naive, cached]
+runs_per_cell: 10
+max_spend_usd: 40
+seed: 1

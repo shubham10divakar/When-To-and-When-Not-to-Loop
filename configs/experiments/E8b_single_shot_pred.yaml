@@ -1,0 +1,13 @@
+# E8 (prediction half) — single-shot baseline on the prediction cells.
+name: E8b_single_shot_pred
+phase: prediction
+mode: single_shot
+client: {kind: anthropic, model: claude-haiku-5-5, effort: low, thinking: adaptive}
+task: {difficulty: L1, n_decoy_chains: 2, n_fake_clues: 2}
+grid:
+  depth: [20, 40]
+  file_tokens: [200, 1000, 3000]
+runs_per_cell: 30
+max_tokens: 2048
+max_spend_usd: 20
+seed: 4

@@ -1,0 +1,13 @@
+# E9 — Prediction (headline): feasible-region classification.
+# Cells are sampled near and far from the predicted boundary by
+# `loopbounds predict` (writes E9_cells.generated.yaml) BEFORE any E9 data exists.
+name: E9_feasibility
+phase: prediction
+client: {kind: anthropic, model: claude-haiku-5-5, effort: low, thinking: adaptive}
+task: {difficulty: L1, n_decoy_chains: 2, n_fake_clues: 2}
+cells_file: E9_cells.generated.yaml
+constraints: {budget: 0.02, slo: 120.0, s_min: 0.8}   # finalize in PREREG.md
+runs_per_cell: 30
+summ_every: 5
+max_spend_usd: 120
+seed: 9

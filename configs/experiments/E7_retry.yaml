@@ -1,0 +1,14 @@
+# E7 — Prediction: retry ceiling.
+name: E7_retry
+phase: prediction
+client: {kind: anthropic, model: claude-haiku-5-5, effort: low, thinking: adaptive}
+task: {difficulty: L1, file_tokens: 1000, n_decoy_chains: 2, n_fake_clues: 2}
+injection: {f: 0.2}
+grid:
+  depth: [10]
+  d: [0.2, 0.5, 0.9]
+  R: [0, 1, 3, 6]
+  arm: [naive]
+runs_per_cell: 30
+max_spend_usd: 40
+seed: 7

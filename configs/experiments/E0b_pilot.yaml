@@ -1,0 +1,14 @@
+# E0b — Pilot: pick the difficulty level giving p in ~[0.85, 0.97]; measure δ, a, γ, TTFT.
+# Lock the chosen level in preregistration/PREREG.md.
+name: E0b_pilot
+phase: pilot
+client: {kind: anthropic, model: claude-haiku-5-5, effort: low, thinking: adaptive}
+task: {file_tokens: 1000, n_decoy_chains: 2, n_fake_clues: 2}
+grid:
+  difficulty: [L0, L1, L2, L3]
+  depth: [10]
+  arm: [naive, summarized]
+runs_per_cell: 20
+summ_every: 5
+max_spend_usd: 10
+seed: 100

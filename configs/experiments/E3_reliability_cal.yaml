@@ -1,0 +1,12 @@
+# E3 — Calibration: fit p, r, e on short chains.
+name: E3_reliability_cal
+phase: calibration
+client: {kind: anthropic, model: claude-haiku-5-5, effort: low, thinking: adaptive}
+task: {difficulty: L1, n_decoy_chains: 2, n_fake_clues: 2}
+grid:
+  depth: [5, 10]
+  file_tokens: [200, 1000, 3000]
+  arm: [naive]
+runs_per_cell: 50
+max_spend_usd: 40
+seed: 3

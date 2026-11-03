@@ -1,0 +1,12 @@
+# E6 — Prediction: summarization cost + reliability.
+name: E6_summarization
+phase: prediction
+client: {kind: anthropic, model: claude-haiku-5-5, effort: low, thinking: adaptive}
+task: {difficulty: L1, file_tokens: 1000, n_decoy_chains: 2, n_fake_clues: 2}
+grid:
+  depth: [10, 20, 40]
+  summ_every: [3, 5]
+  arm: [summarized]
+runs_per_cell: 30
+max_spend_usd: 40
+seed: 6

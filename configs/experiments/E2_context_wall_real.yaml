@@ -1,0 +1,13 @@
+# E2 (confirmation) — one real-window run that overflows the model's actual context.
+# Expensive at large δ (~$50-80): a single run, naive arm only. Run manually.
+name: E2_context_wall_real
+phase: calibration
+client: {kind: anthropic, model: claude-haiku-5-5, effort: low, thinking: adaptive}
+task: {difficulty: L0, file_tokens: 3000, n_decoy_chains: 0, n_fake_clues: 0}
+grid:
+  depth: [400]
+  arm: [naive]
+max_steps_factor: 1
+runs_per_cell: 1
+max_spend_usd: 100   # ~ $50-80 at long-context prices
+seed: 22

@@ -1,0 +1,13 @@
+# E8 (calibration half) — single-shot baseline on the calibration cells (same task seeds as E1/E3).
+name: E8a_single_shot_cal
+phase: calibration
+mode: single_shot
+client: {kind: anthropic, model: claude-haiku-5-5, effort: low, thinking: adaptive}
+task: {difficulty: L1, n_decoy_chains: 2, n_fake_clues: 2}
+grid:
+  depth: [5, 10]
+  file_tokens: [200, 1000, 3000]
+runs_per_cell: 30
+max_tokens: 2048
+max_spend_usd: 10
+seed: 3

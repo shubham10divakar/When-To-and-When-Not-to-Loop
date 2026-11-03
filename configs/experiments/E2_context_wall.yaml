@@ -1,0 +1,14 @@
+# E2 — Calibration: context wall. Artificial window cap (design doc §12.2),
+# plus one real-window confirmation run (E2_context_wall_real.yaml).
+name: E2_context_wall
+phase: calibration
+client: {kind: anthropic, model: claude-haiku-5-5, effort: low, thinking: adaptive}
+task: {difficulty: L1, file_tokens: 3000}
+grid:
+  depth: [40]
+  arm: [naive, summarized]
+window_cap: 64000
+runs_per_cell: 10
+summ_every: 5
+max_spend_usd: 15
+seed: 2

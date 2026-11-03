@@ -1,0 +1,12 @@
+# E0 — Validation: mock end-to-end + estimator recovery (free; no API key).
+name: E0_mock
+phase: validation
+client: {kind: markov_mock, p: 0.9, r: 0.35, e: 0.06, seed: 0}
+task: {difficulty: L1, file_tokens: 200, n_decoy_chains: 2, n_fake_clues: 2}
+grid:
+  depth: [5, 10]
+  arm: [naive, cached, summarized]
+runs_per_cell: 1000
+summ_every: 5
+max_steps_factor: 3
+seed: 0

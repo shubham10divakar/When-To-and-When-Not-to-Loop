@@ -1,0 +1,12 @@
+# E4 — Prediction: out-of-sample reliability on long chains.
+name: E4_reliability_pred
+phase: prediction
+client: {kind: anthropic, model: claude-haiku-5-5, effort: low, thinking: adaptive}
+task: {difficulty: L1, n_decoy_chains: 2, n_fake_clues: 2}
+grid:
+  depth: [20, 40]
+  file_tokens: [200, 1000, 3000]
+  arm: [naive]
+runs_per_cell: 50
+max_spend_usd: 150
+seed: 4

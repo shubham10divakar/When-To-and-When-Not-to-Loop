@@ -1,0 +1,17 @@
+# Ground-truth parameters used by `--mock` runs (offline end-to-end pipeline).
+# The analysis must recover these from the mock logs.
+p0: 0.95
+lam: 2.0e-6
+form: exp
+r: 0.35
+e: 0.05
+a_out: 60
+ttft_a0: 0.35
+ttft_a1: 2.0e-5
+ttft_a2: 2.0e-6
+tps: 150
+gamma: 0.2
+ss_b0: 4.0
+ss_b1: -0.15
+ss_b2: -0.02
+seed: 0

@@ -1,0 +1,10 @@
+# E10 — External validity: small Python function-writing tasks with hidden tests.
+name: E10_coding
+phase: external
+task_kind: coding
+client: {kind: anthropic, model: claude-haiku-5-5, effort: low, thinking: adaptive}
+arms: [naive, cached]
+runs_per_task: 3
+max_steps: 20
+max_spend_usd: 10
+seed: 10
