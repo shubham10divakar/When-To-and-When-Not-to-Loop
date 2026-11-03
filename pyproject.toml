@@ -1,0 +1,43 @@
+[project]
+name = "when-to-and-when-not-to-loop"
+version = "0.1.0"
+description = "Companion code for the paper 'When To and When Not to Loop: Feasibility Bounds for Agentic LLM Pipelines'"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Subham" }]
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "pandas>=2.1",
+    "pyarrow>=14",
+    "simpy>=4.1",
+    "pyyaml>=6.0",
+    "pydantic>=2.5",
+    "matplotlib>=3.8",
+    "anthropic>=0.40",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+
+[project.scripts]
+loopbounds = "loopbounds.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/loopbounds"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "api: requires a real ANTHROPIC_API_KEY (skipped otherwise)",
+    "slow: long-running Monte Carlo tests",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"

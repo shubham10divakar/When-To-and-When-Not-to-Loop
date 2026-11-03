@@ -1,0 +1,54 @@
+# Single source of truth for model parameters (design doc §2).
+# Values here are PRIORS used before calibration; `make calibrate` writes
+# data/processed/params_fitted.yaml, which supersedes them for prediction.
+# Prices/window come from prices.yaml unless overridden here.
+
+task:
+  depth: 10
+  max_steps: null        # null -> 3 * depth
+  answer_call: true
+  file_tokens: 1000
+  n_decoy_chains: 2
+
+tokens:
+  t0: 1500
+  delta: 1100
+  a_out: 60
+
+summarization:
+  summ_every: 5
+  gamma: 0.2
+  t0_summ: 300
+
+reliability:
+  p: 0.95
+  r: 0.3
+  e: 0.05
+  coupling: none         # none | exp | linear
+  p0: 0.97
+  lam: 0.0
+
+injection:
+  f_inject: 0.0
+  d_detect: 1.0
+  retries: 0
+
+latency:
+  ttft_a0: 0.35
+  ttft_a1: 2.0e-5
+  ttft_a2: 2.0e-6
+  tps: 150
+  tool_lat: 0.002
+  tool_lat_sigma: 0.5
+  llm_lat_sigma: 0.25
+
+single_shot:
+  a_ss: 30
+  ss_b0: 4.0
+  ss_b1: -0.15
+  ss_b2: -0.02
+
+constraints:
+  budget: 0.05
+  slo: 60
+  s_min: 0.8
