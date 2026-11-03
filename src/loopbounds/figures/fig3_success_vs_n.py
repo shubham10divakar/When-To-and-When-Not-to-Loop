@@ -36,5 +36,5 @@ def make(ctx: FigContext, file_sizes=(200, 1000, 3000), cal_max: int = 10):
         ax.text(cal_max / 2, 0.04, "calibration", ha="center", fontsize=7, color=INK2)
         ax.text((cal_max + n_grid.max()) / 2, 0.04, "prediction", ha="center", fontsize=7, color=INK2)
     np.atleast_1d(axes)[0].set_ylabel("P(success)")
-    np.atleast_1d(axes)[0].legend(loc="upper right")
+    np.atleast_1d(axes)[-1].legend(loc="upper right")
     return ctx.save(fig, "fig3_success_vs_n")
