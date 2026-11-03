@@ -89,6 +89,24 @@ ollama run llama3.1:8b "hi"   # load once, then:
 ollama ps                     # PROCESSOR should read "100% GPU" (CPU-only is ~10x slower)
 ```
 
+**Note: making sure Ollama uses the GPU.** On the development machine
+(RTX 3060, 12 GB), Ollama 0.40.13 ran models on the CPU only: `ollama ps`
+showed `100% CPU`, and `%LOCALAPPDATA%\Ollama\server.log` listed only
+`inference compute id=cpu`, although the NVIDIA driver was installed. Each
+step took about 6 s. Updating Ollama to 0.40.14 and restarting it fixed this.
+The log now shows `inference compute ... library=CUDA ... name="NVIDIA GeForce RTX 3060"`
+and `ollama ps` shows `100% GPU`. To check after any reinstall or driver update:
+
+```bash
+ollama run llama3.1:8b "hi"   # loads the model
+ollama ps                     # PROCESSOR must read "100% GPU"
+```
+
+If it still says CPU, look for CUDA errors near "discovering available GPUs" in
+`server.log`; updating Ollama and/or the NVIDIA driver usually resolves it.
+Models larger than VRAM (e.g. `qwen2.5:32b`, 19 GB) spill onto the CPU and run
+far slower, so stick to ~7–8B models on a 12 GB card.
+
 **2. Run all three models end to end** (calibrate → predict → prediction runs → E10 coding tasks → analyze → figures), then compare them:
 
 ```bash
