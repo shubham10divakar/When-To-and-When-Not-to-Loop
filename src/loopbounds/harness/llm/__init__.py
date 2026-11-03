@@ -22,6 +22,10 @@ def make_client(spec: dict) -> LLMClient:
         from loopbounds.harness.llm.ollama_client import OllamaClient
 
         return OllamaClient(**spec)
+    if kind == "openai":
+        from loopbounds.harness.llm.openai_client import OpenAIClient
+
+        return OpenAIClient(**spec)
     raise ValueError(f"unknown client kind {kind!r}")
 
 

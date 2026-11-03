@@ -11,6 +11,22 @@ import json
 import sys
 
 from loopbounds import pipeline as pl
+from loopbounds.params import REPO_ROOT
+
+
+def load_dotenv(path=None) -> None:
+    """Load KEY=VALUE lines from the repo's .env into os.environ (never overrides existing vars)."""
+    import os
+
+    p = path or REPO_ROOT / ".env"
+    if not p.exists():
+        return
+    for line in p.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        os.environ.setdefault(k.strip(), v.strip().strip(chr(34)).strip(chr(39)))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -24,6 +40,9 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--ollama", metavar="MODEL", default=None,
                            help="use a local Ollama model, write to data/ollama/<model>/")
             p.add_argument("--num-ctx", type=int, default=32768, help="Ollama context window (num_ctx)")
+            p.add_argument("--openai", metavar="MODEL", default=None,
+                           help="use an OpenAI model (OPENAI_API_KEY in .env), write to data/openai/<model>/")
+            p.add_argument("--budget", type=float, default=None, help="study-wide spend cap in USD")
         p.add_argument("-v", "--verbose", action="store_true")
         return p
 
@@ -59,13 +78,20 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--scale", type=float, default=0.2)
     p.add_argument("--num-ctx", type=int, default=32768)
     p.add_argument("--no-external", action="store_true", help="skip E10 coding tasks")
+    p.add_argument("--openai", nargs="*", default=[], metavar="MODEL", help="also run these OpenAI models")
+    p.add_argument("--budget", type=float, default=4.0, help="spend cap per OpenAI model study (USD)")
+    p.add_argument("--openai-scale", type=float, default=None, help="run scale for OpenAI studies")
     add("compare-models", "cross-model table + figure from data/ollama/*/processed", mock=False)
 
+    load_dotenv()
     a = ap.parse_args(argv)
     if a.cmd == "local-pipeline":
         for m in a.models:
             pl.local_pipeline(m, scale=a.scale, num_ctx=a.num_ctx, external_tasks=not a.no_external,
                               verbose=a.verbose)
+        for m in a.openai:
+            pl.local_pipeline(m, provider="openai", scale=a.openai_scale or a.scale, budget_usd=a.budget,
+                              external_tasks=not a.no_external, verbose=a.verbose)
         from loopbounds.analysis.compare import compare_models
         compare_models()
         return 0
@@ -74,7 +100,8 @@ def main(argv: list[str] | None = None) -> int:
         print(compare_models().to_string())
         return 0
     paths = pl.Paths.make(mock=getattr(a, "mock", False), ollama=getattr(a, "ollama", None),
-                          num_ctx=getattr(a, "num_ctx", 32768))
+                          num_ctx=getattr(a, "num_ctx", 32768), openai=getattr(a, "openai", None),
+                          budget_usd=getattr(a, "budget", None))
     if a.cmd == "run":
         pl.run(a.experiments, paths, scale=a.scale, verbose=a.verbose)
     elif a.cmd == "estimate":

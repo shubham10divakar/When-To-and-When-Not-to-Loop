@@ -1,7 +1,7 @@
-"""Cross-model comparison for local (Ollama) studies: ``data/ollama/<model>/processed``.
+"""Cross-model comparison of per-model studies: ``data/{ollama,openai}/<model>/processed``.
 
-Writes ``data/ollama/comparison.csv`` (fitted parameters + agreement checks per
-model) and ``data/ollama/figures/models_success_vs_n.{pdf,png}`` (observed
+Writes ``data/models/comparison.csv`` (fitted parameters + agreement checks per
+model) and ``data/models/models_success_vs_n.{pdf,png}`` (observed
 success vs n with each model's own L1 Markov prediction).
 """
 
@@ -15,14 +15,17 @@ import pandas as pd
 
 from loopbounds.params import REPO_ROOT, load_params
 
-OLLAMA_ROOT = REPO_ROOT / "data" / "ollama"
+DATA = REPO_ROOT / "data"
+PROVIDERS = ("ollama", "openai")
+OUT = DATA / "models"
 
 
-def _studies(root: Path = OLLAMA_ROOT) -> list[Path]:
-    return sorted(p for p in root.glob("*/processed") if (p / "params_fitted.yaml").exists())
+def _studies(root: Path = DATA) -> list[Path]:
+    return sorted(p for prov in PROVIDERS for p in (root / prov).glob("*/processed")
+                  if (p / "params_fitted.yaml").exists())
 
 
-def compare_models(root: Path = OLLAMA_ROOT, file_tokens: int = 1000) -> pd.DataFrame:
+def compare_models(root: Path = DATA, file_tokens: int = 1000, out: Path = OUT) -> pd.DataFrame:
     rows = []
     studies = _studies(root)
     for proc in studies:
@@ -44,10 +47,10 @@ def compare_models(root: Path = OLLAMA_ROOT, file_tokens: int = 1000) -> pd.Data
                 row[f"value_{k}"] = c["value"]
         rows.append(row)
     df = pd.DataFrame(rows)
-    root.mkdir(parents=True, exist_ok=True)
-    df.to_csv(root / "comparison.csv", index=False)
+    out.mkdir(parents=True, exist_ok=True)
+    df.to_csv(out / "comparison.csv", index=False)
     if studies:
-        _figure(studies, root / "figures", file_tokens)
+        _figure(studies, out, file_tokens)
     return df
 
 
@@ -63,7 +66,7 @@ def _figure(studies: list[Path], out: Path, file_tokens: int) -> None:
     n_grid = np.arange(1, 45)
     for i, proc in enumerate(studies):
         c = SERIES[i % len(SERIES)]
-        name = (proc / "MODEL").read_text().split()[0].removeprefix("ollama/") if (proc / "MODEL").exists() \
+        name = (proc / "MODEL").read_text().split()[0].split("/", 1)[-1] if (proc / "MODEL").exists() \
             else proc.parent.name
         P = load_params(proc / "params_fitted.yaml")
         rep = json.loads((proc / "fit_report.json").read_text())
@@ -85,7 +88,7 @@ def _figure(studies: list[Path], out: Path, file_tokens: int) -> None:
     ax.set_xlabel("loop depth n")
     ax.set_ylabel("P(success)")
     ax.set_ylim(-0.02, 1.02)
-    ax.set_title(f"Local models: success vs n (file size {file_tokens} tokens)", loc="left")
+    ax.set_title(f"Models: success vs n (file size {file_tokens} tokens)", loc="left")
     ax.legend(loc="lower left")
     out.mkdir(parents=True, exist_ok=True)
     for ext in ("pdf", "png"):

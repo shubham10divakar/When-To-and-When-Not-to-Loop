@@ -111,7 +111,7 @@ def estimate_params(cell: dict, client_spec: dict, base: Params | None = None) -
     task = taskgen.generate(taskgen.TaskConfig(**{k: cell[k] for k in TASK_KEYS}, seed=0))
     t0 = count_tokens(taskgen.system_prompt(task)) + count_tokens(taskgen.task_prompt(task)) + \
         count_json_tokens(TOOL_SCHEMAS)
-    model = client_spec.get("model") if client_spec.get("kind") == "anthropic" else "mock"
+    model = client_spec.get("model") if client_spec.get("kind") in ("anthropic", "openai") else "mock"
     pp = price_params(model or "mock")
     depth = int(cell["depth"])
     return base.with_(depth=depth, max_steps=int(cell["max_steps_factor"]) * depth, t0=float(t0),
@@ -142,9 +142,11 @@ def run_experiment(cfg_or_path, *, out_root: str | Path = RAW_DIR, resume: bool 
     cells = expand_cells(cfg)
     reps = int(runs_per_cell if runs_per_cell is not None else cfg.get("runs_per_cell", 10))
     seed0 = int(cfg.get("seed", 0))
-    is_real = client_spec.get("kind") == "anthropic"
-
-    est = estimate_experiment_cost([(estimate_params(c, client_spec), c["arm"], reps) for c in cells])
+    kind = client_spec.get("kind")
+    is_real = kind in ("anthropic", "openai")      # paid APIs: spend caps enforced
+    # OpenAI caches prompt prefixes automatically, so every arm is billed like the cached arm.
+    est_arm = (lambda a: "cached" if (kind == "openai" and a == "naive") else a)
+    est = estimate_experiment_cost([(estimate_params(c, client_spec), est_arm(c["arm"]), reps) for c in cells])
     cap = cfg.get("max_spend_usd")
     if is_real and cap is not None and est > float(cap):
         raise BudgetExceeded(f"{name}: L1 cost estimate ${est:.2f} exceeds max_spend_usd ${float(cap):.2f}")
@@ -154,8 +156,10 @@ def run_experiment(cfg_or_path, *, out_root: str | Path = RAW_DIR, resume: bool 
 
     llm = client or make_client(client_spec)
     default_cap = getattr(llm, "window_cap", None)      # e.g. Ollama: below num_ctx (silent truncation)
-    if client_spec.get("kind") == "ollama":
+    if kind == "ollama":
         model_for_price = "ollama"
+    elif kind == "openai":
+        model_for_price = client_spec.get("model", "gpt-4.1-nano")
     else:
         model_for_price = client_spec.get("model", "claude-haiku-5-5") if is_real else "mock"
     pp = price_params(model_for_price)

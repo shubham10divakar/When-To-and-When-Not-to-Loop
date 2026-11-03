@@ -13,3 +13,4 @@ data/raw/
 .ipynb_checkpoints/
 data/mock/
 data/ollama/*/raw/
+data/openai/*/raw/

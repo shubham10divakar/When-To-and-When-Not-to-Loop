@@ -35,3 +35,33 @@ def test_live_tool_call():
                    max_tokens=64)
     assert r.tool_call is not None and r.tool_call.name == "read_file"
     assert r.usage.input_new > 0 and r.usage.output > 0
+
+
+def test_openai_message_conversion():
+    from loopbounds.harness.llm.openai_client import to_openai_messages, to_openai_tools
+
+    hist = [
+        {"role": "user", "content": "start"},
+        {"role": "assistant", "content": [{"type": "tool_use", "id": "call_1", "name": "read_file",
+                                           "input": {"name": "abc"}}]},
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "call_1", "content": "hello"}]},
+    ]
+    out = to_openai_messages("sys", hist)
+    assert [m["role"] for m in out] == ["system", "user", "assistant", "tool"]
+    assert out[2]["tool_calls"][0]["function"]["arguments"] == '{"name": "abc"}'
+    assert out[3] == {"role": "tool", "tool_call_id": "call_1", "content": "hello"}
+    assert to_openai_tools(TOOL_SCHEMAS)[2]["function"]["name"] == "answer"
+
+
+def test_study_budget_ledger(tmp_path, monkeypatch):
+    import json
+
+    from loopbounds import pipeline as pl
+
+    monkeypatch.setattr(pl, "REPO_ROOT", tmp_path)
+    p = pl.Paths.make(openai="gpt-4.1-nano", budget_usd=1.0)
+    (p.raw / "E1").mkdir()
+    (p.raw / "E1" / "a.jsonl").write_text(json.dumps({"type": "run", "cost_usd": 0.4}) + "\n")
+    assert p.spent_usd() == 0.4
+    cfg = pl._cfg("E3_reliability_cal", p)
+    assert cfg["client"]["kind"] == "openai" and abs(cfg["max_spend_usd"] - 0.6) < 1e-9
