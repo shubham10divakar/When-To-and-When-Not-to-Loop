@@ -170,7 +170,7 @@ def generate(cfg: TaskConfig) -> TaskInstance:
     names: set[str] = set()
     while len(names) < total:
         names.add(_rand_str(rng, 6, NAME_ALPHABET))
-    names_l = list(names)
+    names_l = sorted(names)          # sets of str iterate in hash order (PYTHONHASHSEED): sort first
     rng.shuffle(names_l)
     chain = names_l[:n]
     decoys = [names_l[n + j * n: n + (j + 1) * n] for j in range(cfg.n_decoy_chains)]
@@ -241,7 +241,8 @@ def system_prompt(task: TaskInstance) -> str:
         f"Each file contains filler text plus clue lines. ONLY follow clue lines tagged [{task.key}]. "
         "Ignore clue lines with any other tag.",
         f"A [{task.key}] NEXT FILE clue tells you which file to read next. "
-        f"When you find a line '[{task.key}] ANSWER: <token>', call answer with that token.",
+        f"When you read a line starting with '[{task.key}] ANSWER:', call answer with the exact "
+        "token written after it. Do not call answer before you have read that line.",
     ]
     if d in ("L2", "L3"):
         rules.append("Some clues give the next file's name reversed; reverse it back before reading.")

@@ -25,6 +25,7 @@ import httpx
 
 from loopbounds.harness.llm.base import ContextOverflow, LLMClient, LLMResponse, ToolCall, Usage, strip_private
 from loopbounds.harness.llm.mock import MockClient
+from loopbounds.harness.tokens import count_tokens
 
 DEFAULT_HOST = "http://localhost:11434"
 WINDOW_SAFETY = 0.85     # runner window_cap = WINDOW_SAFETY * num_ctx (token estimate vs real tokenizer)
@@ -69,6 +70,45 @@ def to_ollama_messages(system: str | None, messages: list[dict]) -> list[dict]:
                     texts.append(b["text"])
             if texts:
                 out.append({"role": "user", "content": "\n".join(texts)})
+    return out
+
+
+_TOOL_TEXT_MARKERS = ("[TOOL_CALLS]", "<tool_call>", "<|python_tag|>")
+
+
+def parse_text_tool_calls(text: str, tool_names: set[str]) -> list[dict]:
+    """Recover tool calls a model wrote as text instead of structured ``tool_calls``.
+
+    Some models (e.g. mistral:7b) sometimes emit ``[TOOL_CALLS] [{"name": ..., "arguments": ...}]``
+    as plain content, which Ollama's parser misses. Only JSON objects whose ``name`` is a known
+    tool are accepted. Returns Ollama-shaped ``{"function": {"name", "arguments"}}`` dicts.
+    """
+    if not text or not tool_names:
+        return []
+    s = text
+    for mk in _TOOL_TEXT_MARKERS:
+        s = s.replace(mk, " ")
+    s = s.replace("</tool_call>", " ")
+    dec = json.JSONDecoder()
+    out: list[dict] = []
+    i = 0
+    while i < len(s):
+        if s[i] not in "[{":
+            i += 1
+            continue
+        try:
+            v, j = dec.raw_decode(s, i)
+        except ValueError:
+            i += 1
+            continue
+        for obj in (v if isinstance(v, list) else [v]):
+            if isinstance(obj, dict):
+                fn = obj.get("function") if isinstance(obj.get("function"), dict) else obj
+                name = fn.get("name")
+                if name in tool_names:
+                    args = fn.get("arguments", fn.get("parameters", {}))
+                    out.append({"function": {"name": name, "arguments": args}})
+        i = j
     return out
 
 
@@ -128,6 +168,7 @@ class OllamaClient(LLMClient):
         text_parts: list[str] = []
         calls: list[dict] = []
         final: dict = {}
+        model_error: str | None = None
         with self.http.stream("POST", f"{self.host}/api/chat", json=body) as resp:
             if resp.status_code >= 400:
                 raise RuntimeError(f"ollama {resp.status_code}: {resp.read().decode(errors='replace')[:500]}")
@@ -136,7 +177,10 @@ class OllamaClient(LLMClient):
                     continue
                 chunk = json.loads(line)
                 if "error" in chunk:
-                    raise RuntimeError(f"ollama error: {chunk['error']}")
+                    # generation-time failure (e.g. "token repeat limit reached"): the model
+                    # produced degenerate output. Treat it as a turn without a tool call.
+                    model_error = str(chunk["error"])
+                    break
                 msg = chunk.get("message") or {}
                 if ttft is None and (msg.get("content") or msg.get("tool_calls") or msg.get("thinking")):
                     ttft = time.perf_counter() - t0
@@ -161,6 +205,14 @@ class OllamaClient(LLMClient):
         if tools is None:
             self._prev_prompt = 0
         text = "".join(text_parts)
+        text_calls = False
+        if not calls and text and tools and model_error is None:
+            calls = parse_text_tool_calls(text, {t["name"] for t in tools})
+            text_calls = bool(calls)
+        if model_error is not None:
+            usage = Usage(input_new=est_total, cache_read=0, cache_write=0, output=count_tokens(text))
+            calls, text = [], ""       # keep degenerate output out of the history
+            self._prev_prompt = 0
         content: list[dict] = []
         if text:
             content.append({"type": "text", "text": text})
@@ -177,10 +229,13 @@ class OllamaClient(LLMClient):
         extra = {"prompt_eval_s": (final.get("prompt_eval_duration") or 0) * ns,
                  "eval_s": (final.get("eval_duration") or 0) * ns,
                  "load_s": (final.get("load_duration") or 0) * ns, "est_context": est_total,
-                 "done_reason": final.get("done_reason")}
+                 "done_reason": final.get("done_reason"), "text_tool_calls": text_calls,
+                 "model_error": model_error}
         return LLMResponse(content=content, tool_calls=tcs, text=text, usage=usage,
                            ttft_s=ttft if ttft is not None else total, total_s=total, model_id=self.model_id,
-                           stop_reason="tool_use" if tcs else (final.get("done_reason") or "stop"), extra=extra)
+                           stop_reason=("model_error" if model_error is not None else
+                                        "tool_use" if tcs else (final.get("done_reason") or "stop")),
+                           extra=extra)
 
     def summarize(self, system, messages, *, max_tokens=2048, history_tokens=None) -> LLMResponse:
         from loopbounds.harness.llm.anthropic_client import render_transcript

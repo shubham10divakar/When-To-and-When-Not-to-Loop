@@ -65,3 +65,15 @@ def test_study_budget_ledger(tmp_path, monkeypatch):
     assert p.spent_usd() == 0.4
     cfg = pl._cfg("E3_reliability_cal", p)
     assert cfg["client"]["kind"] == "openai" and abs(cfg["max_spend_usd"] - 0.6) < 1e-9
+
+
+def test_text_tool_calls_are_recovered():
+    from loopbounds.harness.llm.ollama_client import parse_text_tool_calls
+
+    names = {"list_files", "read_file", "answer"}
+    got = parse_text_tool_calls('[TOOL_CALLS]  [{"name": "read_file", "arguments": {"name": "ab12cd"}}]', names)
+    assert got == [{"function": {"name": "read_file", "arguments": {"name": "ab12cd"}}}]
+    got = parse_text_tool_calls('sure: {"name": "list_files", "arguments": {}} then {"name": "rm", "arguments": {}}',
+                                names)
+    assert [g["function"]["name"] for g in got] == ["list_files"]
+    assert parse_text_tool_calls("no calls here [1, 2]", names) == []

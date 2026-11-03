@@ -119,3 +119,19 @@ def test_classifier_skip_ahead_is_wrong():
     c = Classifier(t)
     assert c.step("read_file", {"name": t.chain[2]}).label == "WRONG"
     assert c.step("answer", {"token": "NOPE"}).label == "ANSWER_WRONG"
+
+
+def test_generation_is_independent_of_hash_seed():
+    """File names must not depend on PYTHONHASHSEED (set iteration order)."""
+    import os
+    import subprocess
+    import sys
+
+    code = ("from loopbounds.harness import taskgen;"
+            "t=taskgen.generate(taskgen.TaskConfig(seed=123));print(','.join(t.chain), t.answer)")
+    outs = set()
+    for hs in ("1", "2", "3"):
+        env = {**os.environ, "PYTHONHASHSEED": hs}
+        outs.add(subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True,
+                                check=True).stdout)
+    assert len(outs) == 1
