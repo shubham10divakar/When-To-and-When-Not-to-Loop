@@ -70,6 +70,66 @@ make figures
 
 Runs are resumable: an interrupted experiment skips runs whose logs already exist.
 
+## Open-source models (Ollama, free, local)
+
+The same experiments run against local open-source models through
+[Ollama](https://ollama.com). Each model gets its own study under
+`data/ollama/<model>/` (logs, fitted parameters, predictions, agreement
+checks, figures, tables). No API key is needed and the cost is $0. For local
+models the binding wall is latency, and the logged token counts still give the
+hosted-API cost of the same runs.
+
+**1. Prerequisites**
+
+```bash
+ollama pull llama3.1:8b
+ollama pull qwen2.5:7b
+ollama pull mistral:7b
+ollama run llama3.1:8b "hi"   # load once, then:
+ollama ps                     # PROCESSOR should read "100% GPU" (CPU-only is ~10x slower)
+```
+
+**2. Run all three models end to end** (calibrate → predict → prediction runs → E10 coding tasks → analyze → figures), then compare them:
+
+```bash
+uv run loopbounds local-pipeline --models llama3.1:8b qwen2.5:7b mistral:7b --scale 0.2
+```
+
+- `--scale 0.2` runs 20% of each experiment's planned runs (at least 3 per cell). Raise it for tighter error bars; on CPU, lower it.
+- `--num-ctx 32768` sets Ollama's context window (the default). Runs stop at 85% of it, because Ollama silently truncates longer prompts. Chains that outgrow it end as `context_overflow`, which is the context wall.
+- `--no-external` skips the E10 coding tasks.
+- Runs are resumable: re-running the command skips runs whose logs already exist.
+
+**3. Outputs**
+
+| Path | Content |
+|---|---|
+| `data/ollama/<model>/processed/` | fitted parameters, predictions, agreement summary, parquet exports |
+| `data/ollama/<model>/figures/`, `tables/` | Fig 1–7 and Tab 1–4 for that model |
+| `data/models/comparison.csv` | fitted p, r, e, λ, speed and check results per model |
+| `data/models/models_success_vs_n.png` | observed success vs n with each model's L1 prediction |
+
+**One model, one stage at a time** (every stage accepts `--ollama MODEL`):
+
+```bash
+uv run loopbounds calibrate   --ollama qwen2.5:7b --scale 0.2
+uv run loopbounds predict     --ollama qwen2.5:7b
+uv run loopbounds run-predict --ollama qwen2.5:7b --scale 0.2
+uv run loopbounds external    --ollama qwen2.5:7b
+uv run loopbounds analyze     --ollama qwen2.5:7b --l2-runs 20000
+uv run loopbounds figures     --ollama qwen2.5:7b
+uv run loopbounds compare-models
+```
+
+Each model's predictions are written before its prediction-phase data exists,
+and `run-predict` refuses to start without them. This is exploratory, so no
+git pre-registration tag is required for local models.
+
+**Adding an OpenAI model** (optional, paid): put `OPENAI_API_KEY=...` in `.env`
+and append `--openai gpt-4.1-nano --budget 4 --openai-scale 0.12` to the
+`local-pipeline` command. The study is hard-capped at `--budget` dollars of
+logged spend.
+
 ## Experiments
 
 | ID | Phase | Purpose |
