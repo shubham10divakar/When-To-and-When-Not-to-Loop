@@ -21,6 +21,9 @@ def main(argv: list[str] | None = None) -> int:
         p = sub.add_parser(name, help=help_)
         if mock:
             p.add_argument("--mock", action="store_true", help="use mock clients, write to data/mock/")
+            p.add_argument("--ollama", metavar="MODEL", default=None,
+                           help="use a local Ollama model, write to data/ollama/<model>/")
+            p.add_argument("--num-ctx", type=int, default=32768, help="Ollama context window (num_ctx)")
         p.add_argument("-v", "--verbose", action="store_true")
         return p
 
@@ -51,9 +54,27 @@ def main(argv: list[str] | None = None) -> int:
     p = add("mock-pipeline", "every stage offline with mock clients", mock=False)
     p.add_argument("--scale", type=float, default=0.3)
     p.add_argument("--l2-runs", type=int, default=20_000)
+    p = add("local-pipeline", "every stage with local Ollama models, one study per model", mock=False)
+    p.add_argument("--models", nargs="+", default=["llama3.1:8b", "qwen2.5:7b", "mistral:7b"])
+    p.add_argument("--scale", type=float, default=0.2)
+    p.add_argument("--num-ctx", type=int, default=32768)
+    p.add_argument("--no-external", action="store_true", help="skip E10 coding tasks")
+    add("compare-models", "cross-model table + figure from data/ollama/*/processed", mock=False)
 
     a = ap.parse_args(argv)
-    paths = pl.Paths.make(mock=getattr(a, "mock", False))
+    if a.cmd == "local-pipeline":
+        for m in a.models:
+            pl.local_pipeline(m, scale=a.scale, num_ctx=a.num_ctx, external_tasks=not a.no_external,
+                              verbose=a.verbose)
+        from loopbounds.analysis.compare import compare_models
+        compare_models()
+        return 0
+    if a.cmd == "compare-models":
+        from loopbounds.analysis.compare import compare_models
+        print(compare_models().to_string())
+        return 0
+    paths = pl.Paths.make(mock=getattr(a, "mock", False), ollama=getattr(a, "ollama", None),
+                          num_ctx=getattr(a, "num_ctx", 32768))
     if a.cmd == "run":
         pl.run(a.experiments, paths, scale=a.scale, verbose=a.verbose)
     elif a.cmd == "estimate":

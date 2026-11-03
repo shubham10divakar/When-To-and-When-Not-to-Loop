@@ -181,9 +181,11 @@ def run_coding_experiment(cfg: dict, *, out_root, resume: bool = True, mock: boo
     name = cfg["name"]
     tasks = tasks or TASKS
     spec = dict(cfg.get("client") or {})
-    llm = CodingMock(seed=int(cfg.get("seed", 0))) if mock or spec.get("kind") != "anthropic" else make_client(spec)
+    real = spec.get("kind") in ("anthropic", "ollama") and not mock
+    llm = make_client(spec) if real else CodingMock(seed=int(cfg.get("seed", 0)))
     is_real = getattr(llm, "kind", "") == "anthropic"
-    pp = price_params(spec.get("model", "claude-haiku-5-5") if is_real else "mock")
+    pp = price_params("ollama" if spec.get("kind") == "ollama" else
+                      (spec.get("model", "claude-haiku-5-5") if is_real else "mock"))
     meter = SpendMeter(pp, float(cfg["max_spend_usd"]) if (is_real and cfg.get("max_spend_usd")) else None)
     logger = RunLogger(out_root, name)
     n = 0

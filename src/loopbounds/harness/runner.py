@@ -55,6 +55,11 @@ def _h(obj: Any, n: int = 10) -> str:
     return hashlib.sha1(json.dumps(obj, sort_keys=True, default=str).encode()).hexdigest()[:n]
 
 
+def _cap(a, b):
+    vals = [int(v) for v in (a, b) if v]
+    return min(vals) if vals else None
+
+
 def load_config(path_or_dict) -> dict:
     if isinstance(path_or_dict, dict):
         return dict(path_or_dict)
@@ -182,7 +187,7 @@ def run_experiment(cfg_or_path, *, out_root: str | Path = RAW_DIR, resume: bool 
                     extra={k: cell[k] for k in cell if k not in base_keys},
                 )
                 if cell["mode"] == "single_shot":
-                    window = int(cell["window_cap"] or default_cap or load_params(model=None).window)
+                    window = int(_cap(cell["window_cap"], default_cap) or load_params(model=None).window)
                     ss = run_single_shot(task, llm, window=window, seed=task_seed)
                     meter.add(ss.usage)
                     run = RunRecord(**rec_common, success=ss.success,
@@ -204,7 +209,7 @@ def run_experiment(cfg_or_path, *, out_root: str | Path = RAW_DIR, resume: bool 
                     flags: list[str] = []
                     try:
                         res = run_agent(env, llm, arm, max_steps=M, run_id=run_id,
-                                        window_cap=cell["window_cap"] or default_cap, max_tokens=max_tokens,
+                                        window_cap=_cap(cell["window_cap"], default_cap), max_tokens=max_tokens,
                                         spend_hook=meter.add)
                     except BudgetExceeded:
                         aborted = True
