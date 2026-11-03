@@ -148,7 +148,11 @@ def run_experiment(cfg_or_path, *, out_root: str | Path = RAW_DIR, resume: bool 
         return ExperimentSummary(name, len(cells) * reps, 0, 0.0, est, False, str(logger.dir))
 
     llm = client or make_client(client_spec)
-    model_for_price = client_spec.get("model", "claude-haiku-5-5") if is_real else "mock"
+    default_cap = getattr(llm, "window_cap", None)      # e.g. Ollama: below num_ctx (silent truncation)
+    if client_spec.get("kind") == "ollama":
+        model_for_price = "ollama"
+    else:
+        model_for_price = client_spec.get("model", "claude-haiku-5-5") if is_real else "mock"
     pp = price_params(model_for_price)
     meter = SpendMeter(pp, float(cap) if (cap is not None and is_real) else None)
     n_done = n_skip = 0
@@ -178,7 +182,7 @@ def run_experiment(cfg_or_path, *, out_root: str | Path = RAW_DIR, resume: bool 
                     extra={k: cell[k] for k in cell if k not in base_keys},
                 )
                 if cell["mode"] == "single_shot":
-                    window = int(cell["window_cap"] or load_params(model=None).window)
+                    window = int(cell["window_cap"] or default_cap or load_params(model=None).window)
                     ss = run_single_shot(task, llm, window=window, seed=task_seed)
                     meter.add(ss.usage)
                     run = RunRecord(**rec_common, success=ss.success,
@@ -200,7 +204,7 @@ def run_experiment(cfg_or_path, *, out_root: str | Path = RAW_DIR, resume: bool 
                     flags: list[str] = []
                     try:
                         res = run_agent(env, llm, arm, max_steps=M, run_id=run_id,
-                                        window_cap=cell["window_cap"], max_tokens=max_tokens,
+                                        window_cap=cell["window_cap"] or default_cap, max_tokens=max_tokens,
                                         spend_hook=meter.add)
                     except BudgetExceeded:
                         aborted = True

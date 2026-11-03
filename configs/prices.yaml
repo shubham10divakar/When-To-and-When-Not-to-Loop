@@ -32,3 +32,10 @@ models:
     cache_write_multiplier: 1.25
     context_window: 200000
     min_cacheable_tokens: 0
+  ollama:                         # local open-source models: no per-token price
+    input_per_mtok: 0.0
+    output_per_mtok: 0.0
+    cache_read_multiplier: 0.10
+    cache_write_multiplier: 1.0
+    context_window: 32768         # = num_ctx used by the Ollama client
+    min_cacheable_tokens: 0

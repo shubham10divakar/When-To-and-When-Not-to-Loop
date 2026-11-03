@@ -18,6 +18,10 @@ def make_client(spec: dict) -> LLMClient:
         from loopbounds.harness.llm.anthropic_client import AnthropicClient
 
         return AnthropicClient(**spec)
+    if kind == "ollama":
+        from loopbounds.harness.llm.ollama_client import OllamaClient
+
+        return OllamaClient(**spec)
     raise ValueError(f"unknown client kind {kind!r}")
 
 
