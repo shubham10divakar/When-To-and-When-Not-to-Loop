@@ -1,0 +1,24 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install
+        run: uv sync --locked
+      - name: Tests (no API)
+        run: uv run pytest -q -m "not slow and not api"
+      - name: Offline mock pipeline (small)
+        run: uv run loopbounds mock-pipeline --scale 0.1 --l2-runs 20000
+      - name: Upload mock figures
+        uses: actions/upload-artifact@v4
+        with:
+          name: mock-figures
+          path: data/mock/figures

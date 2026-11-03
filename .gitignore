@@ -11,3 +11,4 @@ data/raw/
 !data/raw/.gitkeep
 .DS_Store
 .ipynb_checkpoints/
+data/mock/
